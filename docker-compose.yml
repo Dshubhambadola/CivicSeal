@@ -1,0 +1,70 @@
+services:
+  blockchain:
+    image: node:20-alpine
+    working_dir: /app
+    ports:
+      - "8545:8545"
+    volumes:
+      - ./contracts:/app
+    command: sh -c "npm install && npx hardhat node --hostname 0.0.0.0"
+
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: civicseal
+    ports:
+      - "5432:5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    ports:
+      - "3001:3001"
+    environment:
+      - PORT=3001
+      - DB_HOST=db
+      - DB_PASSWORD=password
+      - RPC_URL=http://blockchain:8545
+      # Using Private Key #0 from Hardhat
+      - PRIVATE_KEY=0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
+    depends_on:
+      - blockchain
+      - db
+    # We override CMD to Deploy first, then start server
+    command: >
+      sh -c "
+      echo 'Waiting for Blockchain...' &&
+      sleep 5 &&
+      cd /contracts && 
+      npx hardhat run scripts/deploy.js --network localhost &&
+      echo 'Contracts DEPLOYED.' &&
+      cd /app &&
+      node server.js
+      "
+    volumes:
+       - ./backend:/app
+       - ./contracts:/contracts # Share artifacts
+       - /app/node_modules # Avoid overwriting node_modules
+       - /contracts/node_modules
+
+  frontend:
+    build:
+      context: ./frontend
+    ports:
+      - "3000:3000"
+    environment:
+      # Browser needs localhost, not container name, because it runs on user's machine
+      - NEXT_PUBLIC_API_URL=http://localhost:3001
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+
+volumes:
+  db-data:

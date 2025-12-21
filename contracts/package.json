@@ -1,0 +1,16 @@
+{
+  "name": "civic-seal-contracts",
+  "version": "1.0.0",
+  "description": "Smart contracts for CivicSeal",
+  "main": "index.js",
+  "scripts": {
+    "test": "hardhat test"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "hardhat": "^2.22.0"
+  }
+}
