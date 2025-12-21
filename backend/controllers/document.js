@@ -30,11 +30,17 @@ exports.uploadDocument = (req, res) => {
             console.log(`Processing file: ${req.file.originalname}`);
             console.log(`ID Hash: ${hash}`);
 
-            // 1. Check Blockchain
+            // 1. Check Blockchain & Database
             const [exists] = await documentRegistry.verifyHash(hash);
-            if (exists) {
-                // Idempotency: Return existing record if found
-                return res.status(200).json({ message: 'Document already registered', documentHash: hash });
+            const dbExists = await DocumentMetadata.findOne({ where: { hash } });
+
+            if (exists || dbExists) {
+                // Idempotency: Return existing record if found in either
+                return res.status(200).json({
+                    message: 'Document already registered',
+                    documentHash: hash,
+                    ipfsHash: dbExists ? dbExists.ipfsHash : null
+                });
             }
 
             // 2. Upload to IPFS (Mock)
@@ -102,7 +108,18 @@ exports.verifyDocument = (req, res) => {
 
         try {
             const hash = calculateHash(req.file.buffer);
-            const [exists, submitter, timestamp] = await documentRegistry.verifyHash(hash);
+            let [exists, submitter, timestamp] = await documentRegistry.verifyHash(hash);
+
+            // Fallback: Check Database (Dev Env: Chain resets, DB persists)
+            if (!exists) {
+                const dbDoc = await DocumentMetadata.findOne({ where: { hash } });
+                if (dbDoc) {
+                    exists = true;
+                    submitter = dbDoc.submitter;
+                    timestamp = dbDoc.timestamp || Math.floor(new Date(dbDoc.createdAt).getTime() / 1000);
+                    console.log("Verified via Database Index (Chain reset detected)");
+                }
+            }
 
             res.json({
                 documentHash: hash,

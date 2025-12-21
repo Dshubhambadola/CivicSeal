@@ -21,7 +21,10 @@ export default function RootLayout({
           <div>
             <Link href="/" className="nav-link">Home</Link>
             <Link href="/documents" className="nav-link">Documents</Link>
-
+            {/* Login Link */}
+            <Link href="/login" className="btn" style={{ marginLeft: '1rem', padding: '0.5rem 1rem', fontSize: '0.875rem' }}>
+              Login
+            </Link>
           </div>
         </nav>
         <main className="container">{children}</main>

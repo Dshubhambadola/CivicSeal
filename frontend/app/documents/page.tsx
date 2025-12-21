@@ -106,18 +106,45 @@ export default function DocumentsPage() {
         <div style={{ maxWidth: '600px', margin: '0 auto' }}>
             <div className="header" style={{ padding: 0, border: 'none', marginBottom: '2rem' }}>
                 <h2>Document {mode === 'upload' ? 'Registration (E2EE)' : 'Verification'}</h2>
-                <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     <button
                         onClick={() => { setMode('verify'); setResult(null); setError(''); }}
                         className="btn"
-                        style={{ marginRight: '1rem', background: mode === 'verify' ? 'var(--primary)' : 'transparent', border: '1px solid var(--primary)' }}>
+                        style={{
+                            background: mode === 'verify' ? 'var(--primary)' : 'transparent',
+                            border: '1px solid var(--primary)'
+                        }}>
                         Verify
                     </button>
                     <button
                         onClick={() => { setMode('upload'); setResult(null); setError(''); }}
                         className="btn"
-                        style={{ background: mode === 'upload' ? 'var(--primary)' : 'transparent', border: '1px solid var(--primary)' }}>
+                        style={{
+                            background: mode === 'upload' ? 'var(--primary)' : 'transparent',
+                            border: '1px solid var(--primary)',
+                            marginRight: '1rem'
+                        }}>
                         Register
+                    </button>
+
+                    {/* Faucet Button */}
+                    <button className="btn" style={{ fontSize: '0.8rem', padding: '0.5rem 1rem', background: '#333', border: '1px solid #444' }}
+                        onClick={async () => {
+                            const addr = prompt("Enter wallet address to fund:");
+                            if (!addr) return;
+                            try {
+                                const res = await fetch('http://localhost:3001/api/auth/faucet', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ address: addr })
+                                });
+                                const d = await res.json();
+                                if (d.success) alert("Sent 1 ETH! Tx: " + d.txHash);
+                                else alert("Failed: " + d.error);
+                            } catch (e) { alert("Error calling faucet"); }
+                        }}
+                    >
+                        💰 Fund
                     </button>
                 </div>
             </div>
@@ -162,8 +189,12 @@ export default function DocumentsPage() {
                     <div style={{ marginTop: '1.5rem', padding: '1rem', background: 'rgba(34, 197, 94, 0.1)', color: '#22c55e', borderRadius: '0.5rem', overflowWrap: 'break-word' }}>
                         {mode === 'upload' ? (
                             <>
-                                <h4 style={{ margin: '0 0 0.5rem' }}>✅ Securely Registered!</h4>
-                                <p style={{ fontSize: '0.875rem' }}>Tx Hash: {result.transactionHash}</p>
+                                <h4 style={{ margin: '0 0 0.5rem' }}>
+                                    {result.message === 'Document already registered' ? 'ℹ️ Already Registered' : '✅ Securely Registered!'}
+                                </h4>
+                                {result.transactionHash && (
+                                    <p style={{ fontSize: '0.875rem' }}>Tx Hash: {result.transactionHash}</p>
+                                )}
                                 <p style={{ fontSize: '0.875rem' }}>IPFS CID: {result.ipfsHash}</p>
                             </>
                         ) : (

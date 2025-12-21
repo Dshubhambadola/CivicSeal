@@ -3,8 +3,17 @@ const router = express.Router();
 const documentController = require('../controllers/document');
 
 
+const authController = require('../controllers/auth');
+
+// Auth Routes
+// Auth Routes (Custodial)
+router.post('/auth/register', authController.register);
+router.post('/auth/login', authController.login);
+router.post('/auth/faucet', authController.getFunds); // Keep faucet for auto-funding
+
 // Document Routes
 router.post('/upload', documentController.uploadDocument);
+
 router.post('/verify', documentController.verifyDocument);
 router.post('/recover', documentController.recoverKey);
 
