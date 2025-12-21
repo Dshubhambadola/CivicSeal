@@ -6,4 +6,6 @@ contracts/typechain-types
 frontend/.next
 frontend/out
 backend/uploads
+# Uploads (IPFS Mock)
+uploads/
 .DS_Store
