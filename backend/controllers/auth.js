@@ -49,6 +49,7 @@ exports.register = async (req, res) => {
             name,
             passwordHash,
             encryptedPrivateKey,
+            publicKey: wallet.publicKey, // Store for Sharing
             mobile: req.body.mobile || null
         });
 

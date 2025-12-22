@@ -31,6 +31,10 @@ const User = sequelize.define('User', {
         type: DataTypes.TEXT,
         allowNull: true
     },
+    publicKey: { // For ECIES Encryption (Sharing)
+        type: DataTypes.STRING,
+        allowNull: true
+    },
     nonce: {
         // Keeping this for potential "Export Wallet" or advanced SIWE future use
         type: DataTypes.STRING,

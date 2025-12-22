@@ -17,6 +17,12 @@ router.post('/upload', auth, documentController.uploadDocument);
 router.post('/revoke', auth, documentController.revokeDocument);
 router.get('/list', auth, documentController.listDocuments); // Dashboard API
 
+// Sharing
+router.get('/key/:email', auth, documentController.getPublicKey);
+router.post('/share', auth, documentController.shareDocument);
+router.get('/shared-with-me', auth, documentController.listSharedWithMe);
+router.post('/open-shared', auth, documentController.openSharedDocument);
+
 router.post('/verify', documentController.verifyDocument);
 router.post('/recover', documentController.recoverKey);
 
