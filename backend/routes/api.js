@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const auth = require('../middleware/auth');
 const documentController = require('../controllers/document');
 
 
@@ -12,7 +13,8 @@ router.post('/auth/login', authController.login);
 router.post('/auth/faucet', authController.getFunds); // Keep faucet for auto-funding
 
 // Document Routes
-router.post('/upload', documentController.uploadDocument);
+router.post('/upload', auth, documentController.uploadDocument);
+router.post('/revoke', auth, documentController.revokeDocument); // New Route
 
 router.post('/verify', documentController.verifyDocument);
 router.post('/recover', documentController.recoverKey);

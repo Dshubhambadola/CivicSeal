@@ -1,8 +1,10 @@
 'use client';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '../../context/AuthContext';
 
 export default function LoginPage() {
+    const { login } = useAuth();
     const [isLogin, setIsLogin] = useState(true);
     const [formData, setFormData] = useState({ name: '', email: '', password: '' });
     const [loading, setLoading] = useState(false);
@@ -28,13 +30,12 @@ export default function LoginPage() {
 
             if (!res.ok) throw new Error(data.error || 'Auth failed');
 
-            // Success!
-            // In a real app, use Context or Cookies. For MVP demo, simple localStorage is fine.
-            localStorage.setItem('user', JSON.stringify(data.user));
-            localStorage.setItem('token', data.token);
+            if (!res.ok) throw new Error(data.error || 'Auth failed');
 
-            // Redirect
-            router.push('/documents');
+            // Success! Use AuthContext to login
+            login(data.token, data.user);
+
+            // Redirect handles by login function (or we can keep it here, but context is cleaner)
 
         } catch (err: any) {
             setError(err.message);

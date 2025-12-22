@@ -25,5 +25,7 @@ const documentRegistry = new ethers.Contract(addresses.DocumentRegistry, Documen
 module.exports = {
     documentRegistry,
     wallet, // Export wallet if needed specifically
-    provider
+    provider,
+    DocumentRegistryABI,
+    addresses
 };

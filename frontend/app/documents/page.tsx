@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import CryptoJS from 'crypto-js';
+import { useAuth } from '../../context/AuthContext';
 
 export default function DocumentsPage() {
     const [file, setFile] = useState<File | null>(null);
@@ -46,6 +47,8 @@ export default function DocumentsPage() {
         });
     };
 
+    const { token } = useAuth(); // Get token from context
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!file) return;
@@ -64,7 +67,6 @@ export default function DocumentsPage() {
                 const { encrypted, key } = await encryptFile(file, password);
 
                 // 2. Calculate Original Hash (for storage ID)
-                // We need to read the original file again or clone the reader logic
                 const fileHash = await new Promise<string>((resolve, reject) => {
                     const reader = new FileReader();
                     reader.onload = (e) => {
@@ -84,10 +86,18 @@ export default function DocumentsPage() {
                 formData.append('document', file);
             }
 
+            // Authentication: Send Token in Header
+            const headers: Record<string, string> = {};
+            if (mode === 'upload') {
+                if (!token) throw new Error("You must be logged in to register a document.");
+                headers['Authorization'] = `Bearer ${token}`;
+            }
+
             const endpoint = mode === 'upload' ? `${API_URL}/api/upload` : `${API_URL}/api/verify`;
 
             const res = await fetch(endpoint, {
                 method: 'POST',
+                headers: headers, // Attach headers
                 body: formData,
             });
 
@@ -200,13 +210,52 @@ export default function DocumentsPage() {
                         ) : (
                             <>
                                 <h4 style={{ margin: '0 0 0.5rem' }}>
-                                    {result.isRegistered ? '✅ Document Verified' : '⚠️ Document NOT Registered'}
+                                    {result.isRevoked ? (
+                                        <span style={{ color: '#ef4444' }}>❌ Document REVOKED</span>
+                                    ) : result.isRegistered ? (
+                                        '✅ Document Verified'
+                                    ) : (
+                                        '⚠️ Document NOT Registered'
+                                    )}
                                 </h4>
                                 {result.isRegistered && (
                                     <div style={{ fontSize: '0.875rem', color: '#e2e8f0' }}>
                                         <p>Submitter: {result.submitter}</p>
                                         <p>Timestamp: {new Date(result.timestampDate).toLocaleString()}</p>
                                         {result.ipfsHash && <p>IPFS CID: {result.ipfsHash}</p>}
+
+                                        {!result.isRevoked && (
+                                            <button
+                                                className="btn"
+                                                style={{ marginTop: '10px', background: '#ef4444', border: 'none', fontSize: '0.8rem' }}
+                                                onClick={async () => {
+                                                    if (!confirm("Are you sure you want to REVOKE this document? This cannot be undone.")) return;
+                                                    try {
+                                                        const formData = new FormData();
+                                                        formData.append('document', file);
+
+                                                        const headers: Record<string, string> = {};
+                                                        if (!token) { alert("Login required to revoke"); return; }
+                                                        headers['Authorization'] = `Bearer ${token}`;
+
+                                                        const res = await fetch(`${API_URL}/api/revoke`, {
+                                                            method: 'POST',
+                                                            headers: headers,
+                                                            body: formData
+                                                        });
+                                                        const d = await res.json();
+                                                        if (res.ok) {
+                                                            alert("Document Revoked!");
+                                                            setResult({ ...result, isRevoked: true });
+                                                        } else {
+                                                            alert("Failed: " + d.error);
+                                                        }
+                                                    } catch (e: any) { alert(e.message); }
+                                                }}
+                                            >
+                                                🚫 Revoke Document
+                                            </button>
+                                        )}
                                     </div>
                                 )}
                             </>

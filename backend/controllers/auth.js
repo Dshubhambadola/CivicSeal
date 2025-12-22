@@ -3,6 +3,7 @@ const { User } = require('../models');
 const crypto = require('crypto');
 const bcrypt = require('bcrypt');
 const CryptoJS = require('crypto-js'); // Using pure JS crypto for AES
+const jwt = require('jsonwebtoken');
 
 
 // 1. Register (Custodial: Email + Password -> New Wallet)
@@ -26,6 +27,22 @@ exports.register = async (req, res) => {
         // Simple AES encryption of private key using app secret.
         const encryptedPrivateKey = CryptoJS.AES.encrypt(wallet.privateKey, process.env.APP_SECRET || 'fallback_secret').toString();
 
+        // FUNDING STEP (MVP Relayer Logic):
+        // Automatically send 1 ETH from Admin to this new User so they can pay for gas.
+        try {
+            const provider = new ethers.JsonRpcProvider(process.env.RPC_URL || "http://blockchain:8545");
+            const adminWallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
+            const tx = await adminWallet.sendTransaction({
+                to: wallet.address,
+                value: ethers.parseEther("1.0")
+            });
+            await tx.wait();
+            console.log(`Funded new user ${wallet.address} with 1 ETH. Tx: ${tx.hash}`);
+        } catch (fundErr) {
+            console.error("Funding failed (Blockchain might be down or Admin empty):", fundErr.message);
+            // We don't block registration, but user will have 0 ETH.
+        }
+
         const user = await User.create({
             walletAddress: wallet.address,
             email,
@@ -35,7 +52,18 @@ exports.register = async (req, res) => {
             mobile: req.body.mobile || null
         });
 
-        res.json({ success: true, user: { email: user.email, address: user.walletAddress, name: user.name } });
+        // Generate Real JWT
+        const token = jwt.sign(
+            { id: user.id, email: user.email, address: user.walletAddress },
+            process.env.APP_SECRET || 'fallback_secret',
+            { expiresIn: '24h' }
+        );
+
+        res.json({
+            success: true,
+            user: { email: user.email, address: user.walletAddress, name: user.name },
+            token: token
+        });
 
     } catch (err) {
         console.error(err);
@@ -53,7 +81,13 @@ exports.login = async (req, res) => {
         const validPass = await bcrypt.compare(password, user.passwordHash);
         if (!validPass) return res.status(401).json({ error: 'Invalid password' });
 
-        // Return user info (In real app, return JWT)
+        // Generate Real JWT
+        const token = jwt.sign(
+            { id: user.id, email: user.email, address: user.walletAddress },
+            process.env.APP_SECRET || 'fallback_secret',
+            { expiresIn: '24h' }
+        );
+
         res.json({
             success: true,
             user: {
@@ -61,9 +95,7 @@ exports.login = async (req, res) => {
                 address: user.walletAddress,
                 name: user.name
             },
-            // Hacky way to send Private Key to client IF we wanted Client-Size signing.
-            // But we want Server-Side signing. So we just define session.
-            token: "mock_jwt_session"
+            token: token
         });
     } catch (err) {
         console.error(err);

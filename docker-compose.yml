@@ -37,20 +37,12 @@ services:
       - db
     # We override CMD to Deploy first, then start server
     command: >
-      sh -c "
-      echo 'Waiting for Blockchain...' &&
-      sleep 5 &&
-      cd /contracts && 
-      npx hardhat run scripts/deploy.js --network localhost &&
-      echo 'Contracts DEPLOYED.' &&
-      cd /app &&
-      node server.js
-      "
+      sh -c " echo 'Waiting for Blockchain...' && sleep 15 && cd /contracts &&  npx hardhat run scripts/deploy.js --network localhost && echo 'Contracts DEPLOYED.' && cd /app && node server.js "
     volumes:
-       - ./backend:/app
-       - ./contracts:/contracts # Share artifacts
-       - /app/node_modules # Avoid overwriting node_modules
-       - /contracts/node_modules
+      - ./backend:/app
+      - ./contracts:/contracts # Share artifacts
+      - /app/node_modules # Avoid overwriting node_modules
+      - /contracts/node_modules
 
   frontend:
     build:

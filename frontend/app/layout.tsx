@@ -1,5 +1,6 @@
 import './globals.css';
-import Link from 'next/link';
+import { AuthProvider } from '../context/AuthContext';
+import Nav from './components/Nav'; // Extract Nav to separate component
 
 export const metadata = {
   title: 'CivicSeal - Blockchain Verification',
@@ -14,20 +15,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <nav className="header">
-          <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>
-            CivicSeal 🛡️
-          </div>
-          <div>
-            <Link href="/" className="nav-link">Home</Link>
-            <Link href="/documents" className="nav-link">Documents</Link>
-            {/* Login Link */}
-            <Link href="/login" className="btn" style={{ marginLeft: '1rem', padding: '0.5rem 1rem', fontSize: '0.875rem' }}>
-              Login
-            </Link>
-          </div>
-        </nav>
-        <main className="container">{children}</main>
+        <AuthProvider>
+          <Nav />
+          <main className="container">{children}</main>
+        </AuthProvider>
       </body>
     </html>
   );

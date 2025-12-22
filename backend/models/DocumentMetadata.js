@@ -31,6 +31,10 @@ const DocumentMetadata = sequelize.define('DocumentMetadata', {
     timestamp: {
         type: DataTypes.DATE,
         defaultValue: DataTypes.NOW,
+    },
+    revoked: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false,
     }
 });
 
