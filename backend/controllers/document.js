@@ -194,12 +194,21 @@ exports.revokeDocument = (req, res) => {
     upload(req, res, async (err) => {
         if (err) return res.status(500).json({ error: err.message });
 
-        // We need the hash to revoke. Can be sent in body or calculated from file.
-        // Let's support file upload to calculate hash.
-        if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
-
         try {
-            const hash = calculateHash(req.file.buffer);
+            let hash;
+
+            // 1. Determine Hash (File or Body)
+            // Note: If sent as JSON, 'upload' middleware might skip 'req.body' fields if Content-Type isn't handled correctly before multer,
+            // BUT multer handles multipart/form-data. If sending JSON, multer might ignore it.
+            // Ideally, we check content-type or ensure body parsing works. 
+            // In Express, body-parser usually runs before routes.
+            if (req.file) {
+                hash = calculateHash(req.file.buffer);
+            } else if (req.body.hash) {
+                hash = req.body.hash;
+            } else {
+                return res.status(400).json({ error: 'No file or hash provided' });
+            }
 
             // 1. Authenticate (Must match submitter)
             if (!req.user || !req.user.email) return res.status(401).json({ error: "Unauthorized" });
@@ -222,9 +231,15 @@ exports.revokeDocument = (req, res) => {
             if (doc) {
                 doc.revoked = true;
                 await doc.save();
+
+                // UNPIN FROM PINATA
+                if (doc.ipfsHash) {
+                    const { unpinFromIPFS } = require('../services/ipfs');
+                    await unpinFromIPFS(doc.ipfsHash);
+                }
             }
 
-            res.json({ success: true, message: "Document Revoked", txHash: tx.hash });
+            res.json({ success: true, message: "Document Revoked & Unpinned", txHash: tx.hash });
 
         } catch (error) {
             console.error(error);
@@ -233,4 +248,27 @@ exports.revokeDocument = (req, res) => {
             else res.status(500).json({ error: "Revocation failed", details: error.message });
         }
     });
+};
+
+exports.listDocuments = async (req, res) => {
+    try {
+        // req.user is set by auth middleware
+        if (!req.user || !req.user.address) {
+            return res.status(401).json({ error: "Unauthorized" });
+        }
+
+        const address = req.user.address;
+
+        // Fetch from Postgres
+        const docs = await DocumentMetadata.findAll({
+            where: { submitter: address },
+            order: [['timestamp', 'DESC']]
+        });
+
+        res.json({ success: true, documents: docs });
+
+    } catch (error) {
+        console.error("List Documents Error:", error);
+        res.status(500).json({ error: "Failed to fetch documents" });
+    }
 };

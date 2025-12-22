@@ -14,7 +14,8 @@ router.post('/auth/faucet', authController.getFunds); // Keep faucet for auto-fu
 
 // Document Routes
 router.post('/upload', auth, documentController.uploadDocument);
-router.post('/revoke', auth, documentController.revokeDocument); // New Route
+router.post('/revoke', auth, documentController.revokeDocument);
+router.get('/list', auth, documentController.listDocuments); // Dashboard API
 
 router.post('/verify', documentController.verifyDocument);
 router.post('/recover', documentController.recoverKey);
