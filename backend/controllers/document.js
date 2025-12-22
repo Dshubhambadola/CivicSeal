@@ -102,7 +102,8 @@ exports.uploadDocument = (req, res) => {
                 ipfsHash,
                 submitter: submitterAddress,
                 encryptedKey: encryptedKey || null,
-                originalName: req.file.originalname
+                // Sanitize filename: replace narrow no-break space (U+202F) and other non-standard spaces with regular space
+                originalName: req.file.originalname.replace(/[\u202F\u00A0]/g, ' ')
             });
 
             res.json({

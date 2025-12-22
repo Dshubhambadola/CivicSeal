@@ -176,7 +176,10 @@ export default function DashboardPage() {
 
             const a = document.createElement('a');
             a.href = url;
-            a.download = filename || 'downloaded_file';
+            // Cleaning the filename to ensure it has the correct extension (removing .enc)
+            const cleanFilename = filename ? filename.replace(/\.enc$/, '') : 'downloaded_file';
+            a.download = cleanFilename;
+
             document.body.appendChild(a);
             a.click();
             window.URL.revokeObjectURL(url);
@@ -244,7 +247,7 @@ export default function DashboardPage() {
                                     {documents.map((doc, index) => (
                                         <tr key={index} style={{ borderBottom: '1px solid #1e293b' }}>
                                             <td style={{ padding: '10px', fontWeight: 'bold' }}>
-                                                {doc.originalName ? doc.originalName.replace('.enc', '') : `Doc #${index + 1}`}
+                                                {doc.originalName ? doc.originalName.replace('.enc', '').replace(/â€¯/g, ' ') : `Doc #${index + 1}`}
                                             </td>
                                             <td style={{ padding: '10px' }}>
                                                 <div style={{ fontSize: '0.85em', color: '#64748b', fontFamily: 'monospace' }} title={doc.hash}>
