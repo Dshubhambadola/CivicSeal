@@ -5,5 +5,6 @@ const DocumentShare = require('./DocumentShare');
 module.exports = {
     DocumentMetadata,
     User,
-    DocumentShare
+    DocumentShare,
+    PublicShare: require('./PublicShare')
 };
