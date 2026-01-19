@@ -19,6 +19,11 @@ export default function DashboardPage() {
     const [recipientEmail, setRecipientEmail] = useState('');
     const [shareStatus, setShareStatus] = useState('');
 
+    // Public Link Modal State
+    const [publicLinkModal, setPublicLinkModal] = useState<{ open: boolean, docHash: string | null }>({ open: false, docHash: null });
+    const [publicLink, setPublicLink] = useState('');
+    const [generatingLink, setGeneratingLink] = useState(false);
+
     const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
     useEffect(() => {
@@ -120,6 +125,31 @@ export default function DashboardPage() {
             }
         } catch (e: any) {
             alert(`Error: ${e.message}`);
+        }
+    };
+
+    const generatePublicLink = async () => {
+        if (!publicLinkModal.docHash) return;
+        setGeneratingLink(true);
+        try {
+            const res = await fetch(`${API_URL}/api/public/create`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ documentHash: publicLinkModal.docHash })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                setPublicLink(data.fullUrl);
+            } else {
+                alert("Error: " + data.error);
+            }
+        } catch (e: any) {
+            alert("Error: " + e.message);
+        } finally {
+            setGeneratingLink(false);
         }
     };
 
@@ -281,6 +311,13 @@ export default function DashboardPage() {
                                                         >
                                                             Share
                                                         </button>
+                                                        <button
+                                                            className="btn"
+                                                            style={{ fontSize: '0.8rem', padding: '0.5rem', background: '#8b5cf6', border: 'none' }}
+                                                            onClick={() => setPublicLinkModal({ open: true, docHash: doc.hash })}
+                                                        >
+                                                            🌐 Link
+                                                        </button>
                                                     </div>
                                                 ) : (
                                                     <span style={{ color: '#64748b' }}>-</span>
@@ -380,6 +417,7 @@ export default function DashboardPage() {
                             >
                                 Cancel
                             </button>
+
                             <button
                                 className="btn"
                                 onClick={handleShare}
@@ -392,6 +430,64 @@ export default function DashboardPage() {
                     </div>
                 </div>
             )}
+
+            {/* Public Link Modal */}
+            {publicLinkModal.open && (
+                <div style={{
+                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                    background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000
+                }}>
+                    <div className="card" style={{ width: '500px', background: '#1e293b', border: '1px solid #334155' }}>
+                        <h3 style={{ marginTop: 0 }}>Public Verification Link 🌐</h3>
+                        <p style={{ fontSize: '0.9rem', color: '#94a3b8', marginBottom: '1.5rem' }}>
+                            Anyone with this link can verify the document's authenticity on the blockchain.
+                        </p>
+
+                        {!publicLink ? (
+                            <div style={{ textAlign: 'center', padding: '1rem' }}>
+                                <button
+                                    className="btn"
+                                    onClick={generatePublicLink}
+                                    disabled={generatingLink}
+                                    style={{ background: '#3b82f6', width: '100%' }}
+                                >
+                                    {generatingLink ? 'Generating...' : 'Create Public Link'}
+                                </button>
+                            </div>
+                        ) : (
+                            <div>
+                                <div style={{ background: '#0f172a', padding: '1rem', borderRadius: '4px', wordBreak: 'break-all', fontFamily: 'monospace', marginBottom: '1rem', border: '1px solid #334155' }}>
+                                    {publicLink}
+                                </div>
+                                <button
+                                    className="btn"
+                                    onClick={() => {
+                                        navigator.clipboard.writeText(publicLink);
+                                        alert("Copied to clipboard!");
+                                    }}
+                                    style={{ background: '#22c55e', width: '100%' }}
+                                >
+                                    Copy Link
+                                </button>
+                            </div>
+                        )}
+
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1.5rem' }}>
+                            <button
+                                className="btn"
+                                style={{ background: 'transparent', border: '1px solid #475569' }}
+                                onClick={() => {
+                                    setPublicLinkModal({ open: false, docHash: null });
+                                    setPublicLink('');
+                                }}
+                            >
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
+
