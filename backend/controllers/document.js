@@ -376,9 +376,112 @@ exports.openSharedDocument = async (req, res) => {
             fileKey: originalFileKey,
             filename: doc.originalName || 'shared_document.enc'
         });
-
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: "Failed to open document" });
     }
 };
+
+// --- Public Sharing (Verifiable Links) ---
+
+exports.createPublicLink = async (req, res) => {
+    try {
+        const { documentHash, expiryDate } = req.body;
+        const { PublicShare, DocumentMetadata } = require('../models');
+
+        // 1. Verify Ownership
+        const doc = await DocumentMetadata.findOne({ where: { hash: documentHash } });
+        if (!doc) return res.status(404).json({ error: "Document not found" });
+
+        // Check if user is the submitter (using address from auth)
+        // Note: req.user.address is populated by auth middleware
+        if (doc.submitter.toLowerCase() !== req.user.address.toLowerCase()) {
+            return res.status(403).json({ error: "Only the owner can create public links" });
+        }
+
+        // 2. Create Link
+        const share = await PublicShare.create({
+            documentHash,
+            creatorId: req.user.email, // Using email for traceability
+            expiryDate: expiryDate || null
+        });
+
+        res.json({
+            success: true,
+            linkId: share.id,
+            fullUrl: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/verify/${share.id}`
+        });
+
+    } catch (err) {
+        console.error("Create Public Link Link Error:", err);
+        res.status(500).json({ error: "Failed to create public link" });
+    }
+};
+
+exports.getPublicDocument = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { PublicShare, DocumentMetadata } = require('../models');
+
+        // 1. Find the Share
+        const share = await PublicShare.findByPk(id);
+        if (!share) return res.status(404).json({ error: "Link not found" });
+
+        if (!share.isEnabled) return res.status(410).json({ error: "Link has been disabled" });
+
+        if (share.expiryDate && new Date() > new Date(share.expiryDate)) {
+            return res.status(410).json({ error: "Link has expired" });
+        }
+
+        // 2. Get Document Metadata
+        const doc = await DocumentMetadata.findOne({ where: { hash: share.documentHash } });
+        if (!doc) return res.status(404).json({ error: "Document metadata missing" });
+
+        // 3. Verify on Blockchain (Real-time check)
+        // We do this server-side to spare the client from setting up Ethers/Providers
+        try {
+            const result = await documentRegistry.verifyHash(doc.hash);
+            const [exists, submitter, timestamp, ipfsHash, encryptedKey, revoked] = result;
+
+            res.json({
+                success: true,
+                document: {
+                    originalName: doc.originalName,
+                    hash: doc.hash,
+                    ipfsHash: doc.ipfsHash,
+                    submitter: submitter,
+                    timestamp: timestamp.toString(),
+                    revoked: revoked,
+                    // If DB says revoked but chain doesn't (due to dev reset), trust DB? 
+                    // For now, chain is source of truth.
+                    isChainValid: exists
+                },
+                shareDetails: {
+                    creator: share.creatorId,
+                    createdAt: share.createdAt
+                }
+            });
+
+        } catch (chainErr) {
+            console.error("Chain verify failed:", chainErr);
+            // Fallback to DB metadata if chain fails (e.g. dev environment issues)
+            res.json({
+                success: true,
+                isFallback: true,
+                document: {
+                    originalName: doc.originalName,
+                    hash: doc.hash,
+                    ipfsHash: doc.ipfsHash,
+                    submitter: doc.submitter,
+                    timestamp: Math.floor(new Date(doc.createdAt).getTime() / 1000),
+                    revoked: doc.revoked
+                }
+            });
+        }
+
+    } catch (err) {
+        console.error("Get Public Doc Error:", err);
+        res.status(500).json({ error: "Failed to fetch document" });
+    }
+};
+

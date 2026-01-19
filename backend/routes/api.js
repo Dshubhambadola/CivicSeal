@@ -26,6 +26,11 @@ router.post('/open-shared', auth, documentController.openSharedDocument);
 router.post('/verify', documentController.verifyDocument);
 router.post('/recover', documentController.recoverKey);
 
+// Public Verification
+router.post('/public/create', auth, documentController.createPublicLink);
+router.get('/public/:id', documentController.getPublicDocument);
+
+
 
 
 module.exports = router;
